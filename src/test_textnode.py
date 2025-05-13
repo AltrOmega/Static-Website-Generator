@@ -1,5 +1,5 @@
 import unittest
-from textnode import TextNode, TextType, text_node_to_html_node
+from textnode import TextNode, TextType, text_node_to_html_node, perc_extract
 
 class TestTextNode(unittest.TestCase):
     def test_eq(self):
@@ -75,7 +75,17 @@ class TestTextNode(unittest.TestCase):
         self.assertEqual(html_link_node.props,
             {'src': 'some url', 'alt': "This is a image node"})
             
+    def test_perc_extract(self):
+        tests = [
+            ( perc_extract("**ballder**", TextType.BOLD), ["ballder"] ),
+            ( perc_extract("`code`", TextType.CODE), ["code"] ),
+            ( perc_extract("__bald__", TextType.BOLD), ["bald"] ),
+            ( perc_extract("[link name](gugiel)", TextType.LINK), ["link name", "gugiel"] ),
+            ( perc_extract("![img fallback](some image link)", TextType.IMAGE), ["img fallback", "some image link"] ),
+        ]
 
+        for test in tests:
+            self.assertListEqual(test[0], test[1])
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,26 @@ class TextType(Enum):
     LINK = ('[%](%)',)
     IMAGE = ('![%](%)',)
 
+def perc_extract(text: str, text_type: TextType):
+    if '%' in text_type.value: return text
+    ret = []
+    for pattern in text_type.value:
+        splits = pattern.split('%')
+        if text.find(splits[0]) != 0:
+            continue
+        
+        for split in splits:
+            split_begin = text.find(split)
+            split_end = split_begin+len(split)
+
+            before_txt = text[:split_begin]
+            text = text[split_end:]
+            if before_txt != '':
+                ret.append(before_txt)
+
+    return ret
+
+
 
 class TextNode:
     def __init__(self, text: str, text_type: TextType, url: str=None):

@@ -1,4 +1,4 @@
-from textnode import TextType, TextNode
+from textnode import TextType, TextNode, perc_extract
 from typing import List
 import re
 
@@ -31,3 +31,36 @@ def extract_markdown_images(text):
 
 def extract_markdown_links(text):
     return re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)" , text)
+
+def extract_markdown_image(text):
+    return re.findall(r"!\[.*?\]\(.*?\)", text)
+
+
+def split_nodes_image(old_nodes):
+    new_nodes: List[TextNode] = []
+    for node in old_nodes:
+
+        extract = extract_markdown_image(node.text)
+        if node.text_type != TextType.TEXT or extract is None or len(extract) == 0:
+            new_nodes.append(node)
+            continue
+
+        print(f"[{extract[0]}]")
+        splat = node.text.split(extract[1], maxsplit=1)
+        if len(splat) != 2:
+            new_nodes.append(node)
+            break
+
+        if splat[0] != '':
+            new_nodes.append(TextNode(splat[0], TextType.TEXT))
+
+
+        perc_ext = perc_extract(extract[1], TextType.IMAGE)
+        new_nodes.append(TextNode(perc_ext[0], TextType.IMAGE, perc_ext[1]))
+        if splat[1] != '':
+            new_nodes.extend(split_nodes_image([TextNode(splat[1], TextType.TEXT)]))
+
+    return new_nodes
+
+def split_nodes_link(old_nodes):
+    pass
