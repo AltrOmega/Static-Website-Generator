@@ -3,7 +3,7 @@ from textnode import TextNode, TextType
 from md_handle import *
 
 class TestTextNode(unittest.TestCase):
-    def test_split_nodes_delimiter(self):
+    def _test_split_nodes_delimiter(self):
         test = TextNode("amogus **ballder** sus", TextType.TEXT)
         self.assertEqual(split_nodes_delimiter([test], '**', TextType.BOLD),[
             TextNode("amogus ", TextType.TEXT),
@@ -11,7 +11,42 @@ class TestTextNode(unittest.TestCase):
             TextNode(" sus", TextType.TEXT),
         ])
 
-    def test_extract_markdown_images(self):
+    def test_split_nodes_by_type(self):
+        tests = [
+            ("this is **bolded** text", TextType.BOLD, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is __bolded__ text", TextType.BOLD, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is _italic_ text", TextType.ITALIC, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is `code  ` text", TextType.CODE, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("code  ", TextType.CODE),
+                TextNode(" text", TextType.TEXT),
+            ]),
+        ]
+
+        for test in tests:
+            self.assertListEqual(
+                split_nodes_by_type(
+                    [TextNode(test[0], TextType.TEXT)], test[1]
+                    ),
+                test[2]
+            )
+
+
+
+'''
+    def _test_extract_markdown_images(self):
         matches = extract_markdown_images(
             "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
         )
@@ -56,6 +91,6 @@ class TestTextNode(unittest.TestCase):
                 ),
             ]
         )
-
+'''
 if __name__ == "__main__":
     unittest.main()

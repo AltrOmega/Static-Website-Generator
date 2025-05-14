@@ -1,32 +1,85 @@
 from enum import Enum
 from htmlnode import LeafNode
+from typing import Tuple
+
+class PatternLiteral:
+    def __init__(self, *args):
+        self.patterns: Tuple[str] = args
+        self.starts = []
+        self.ends = []
+
+        for pattern in self.patterns:
+            split: list = pattern.split('%')
+            if '' in split:
+                count = split.count('')
+                if len(split) != count:
+                    raise ValueError("Missing closing pattern in PatternLiteral definition.")
+                return
+            
+            self.starts.append(split[0])
+            self.ends.append( (*split[1:],) )
+
+
+
+
 
 class TextType(Enum):
-    TEXT = ('%',)
-    BOLD = ('**%**','__%__')
-    ITALIC = ('*%*','_%_')
-    CODE = ('`%`',)
-    LINK = ('[%](%)',)
-    IMAGE = ('![%](%)',)
+    TEXT = PatternLiteral('%')
+    BOLD = PatternLiteral('**%**','__%__')
+    ITALIC = PatternLiteral('*%*','_%_')
+    CODE = PatternLiteral('`%`',)
+    LINK = PatternLiteral('[%](%)',)
+    IMAGE = PatternLiteral('![%](%)',)
 
-def perc_extract(text: str, text_type: TextType):
-    if '%' in text_type.value: return text
-    ret = []
-    for pattern in text_type.value:
-        splits = pattern.split('%')
-        if text.find(splits[0]) != 0:
-            continue
-        
-        for split in splits:
-            split_begin = text.find(split)
-            split_end = split_begin+len(split)
+            
 
-            before_txt = text[:split_begin]
-            text = text[split_end:]
-            if before_txt != '':
-                ret.append(before_txt)
 
-    return ret
+
+def extract_pattern(text: str, text_type: TextType):
+    pattern_literal = text_type.value
+    if pattern_literal.starts == []: return text
+
+    #print(f'\ntext: ["{text}"]')
+    i = None 
+    open_pattern_index = None
+    open_text_index = None
+    for i in range(len(pattern_literal.starts)):
+        start = pattern_literal.starts[i]
+
+        open_pattern_index = text.find(start)
+        if open_pattern_index != -1:
+            open_text_index = open_pattern_index + len(start)
+            break
+    if open_pattern_index == -1:
+        return []
+    global_open_pattern_index = open_pattern_index
+    global_close_pattern_index = 0
+    extract = []
+    end = '' 
+    #print(f"\no[{open_pattern_index}:{text[open_pattern_index]}] ; [{open_text_index}:{text[open_text_index]}]")
+    for j in range(len(pattern_literal.ends[i])):
+        end = pattern_literal.ends[i][j]
+
+        close_text_index = text.find(end, open_text_index)
+        if close_text_index == -1: 
+            raise ValueError(f"Given text is a missing closing pattern. ;{text}")
+        global_close_pattern_index += close_text_index
+
+        capture = text[open_text_index:close_text_index]
+        extract.append(capture)
+
+        #print(f"c[{close_text_index-1}:{text[close_text_index-1]}] ; [{close_pattern_index-1}:{text[close_pattern_index-1]}]")
+        #print(f'capture: ["{capture}"]')
+        text = text[close_text_index:]
+
+        # will probably need to adjust the indexes here slightly
+        open_pattern_index = 0 
+        open_text_index = len(end)
+
+    
+    return (extract, global_open_pattern_index, global_close_pattern_index + len(end))
+
+
 
 
 
