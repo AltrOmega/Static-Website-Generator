@@ -35,3 +35,14 @@ def text_to_textnodes(text: str):
         nodes = split_nodes_by_type(nodes, text_type)
 
     return nodes
+
+
+
+
+
+def markdown_to_blocks(markdown: str):
+    split: List[str] = markdown.split('\n\n')
+    split = list(filter(lambda x: x != '', split))
+    return list(map(lambda x: x.strip(), split))
+
+
