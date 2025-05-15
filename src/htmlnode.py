@@ -37,7 +37,7 @@ class LeafNode(HTMLNode):
     
     # Override
     def to_html(self):
-        if self.value == None or self.value == '':
+        if self.value == None or self.value == '': #<- this braks stuff for some reason
             raise ValueError("LeafNode has to have a value.")
         
         if self.tag == None:

@@ -1,15 +1,22 @@
-from textnode import TextType, TextNode, extract_pattern
+from textnode import TextType, TextNode, extract_pattern, text_node_to_html_node
+from htmlnode import *
 from typing import List
 import re
 from enum import Enum
 
 class BlockType(Enum):
-    PARAGRAPH = 1
-    HEADING = 2
-    CODE = 3
-    QUOTE = 4
-    UNORDERED_LIST = 5
-    ORDERED_LIST = 6
+    PARAGRAPH = 'p'
+    HEADING_1 = 'h1'
+    HEADING_2 = 'h2'
+    HEADING_3 = 'h3'
+    HEADING_4 = 'h4'
+    HEADING_5 = 'h5'
+    HEADING_6 = 'h6'
+    CODE = 'code'
+    QUOTE = 'blockquote'
+    UNORDERED_LIST = 'ul'
+    ORDERED_LIST = 'ol'
+
 
 
 
@@ -65,11 +72,22 @@ def markdown_to_blocks(markdown: str):
 def block_to_block_type_extract(block: str):
     l = len(block)
 
-    if l >= 2 and block[0] in ['1', '2', '3', '4', '5', '6'] and block [1] == '#':
-        return BlockType.HEADING, block[2:]
+    if l >= 2 and block[0] == '#':
+        if l >= 7 and block[:7] == '###### ':
+            return BlockType.HEADING_6, block[7:]
+        if l >= 6 and block[:6] == '##### ':
+            return BlockType.HEADING_5, block[6:]
+        if l >= 5 and block[:5] == '#### ':
+            return BlockType.HEADING_4, block[5:]
+        if l >= 4 and block[:4] == '### ':
+            return BlockType.HEADING_3, block[4:]
+        if l >= 3 and block[:3] == '## ':
+            return BlockType.HEADING_2, block[3:]
+
+        return BlockType.HEADING_1, block[2:]
     
     if l >= 6 and block[:3] == '```' and block[-3:] == '```':
-        return BlockType.CODE, block[3:-3]
+        return BlockType.CODE, block[3:-3].lstrip('\n')
     
     every_line = block.split('\n')
     ye = True
@@ -112,3 +130,28 @@ def block_to_block_type_extract(block: str):
     
 
     return BlockType.PARAGRAPH, block
+
+
+
+
+
+def markdown_to_html_node(markdown: str):
+
+    def helper(type, content):
+        text_nodes = text_to_textnodes(content)
+        html_nodes = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
+        return ParentNode(type.value, html_nodes, None)
+
+    blocks = markdown_to_blocks(markdown)
+    children = []
+    for block in blocks:
+        type, content = block_to_block_type_extract(block)
+        if type != BlockType.CODE:
+            # next line is a temp test remove/change later
+            content = ' '.join(content.split('\n'))
+            children.append(helper(type, content))
+        else:
+            html_node = [LeafNode('code', content)]
+            children.append(ParentNode('pre', html_node, None))
+
+    return ParentNode('div', children)

@@ -108,7 +108,12 @@ This is the same paragraph on a new line
     def test_block_to_block_type_extract(self):
         tests = [
             ("this is a paragraph", (BlockType.PARAGRAPH, "this is a paragraph")),
-            ("1# this is a header", (BlockType.HEADING, " this is a header")),
+            ("# this is a h1 header", (BlockType.HEADING_1, "this is a h1 header")),
+            ("## this is a h2 header", (BlockType.HEADING_2, "this is a h2 header")),
+            ("### this is a h3 header", (BlockType.HEADING_3, "this is a h3 header")),
+            ("#### this is a h4 header", (BlockType.HEADING_4, "this is a h4 header")),
+            ("##### this is a h5 header", (BlockType.HEADING_5, "this is a h5 header")),
+            ("###### this is a h6 header", (BlockType.HEADING_6, "this is a h6 header")),
             ("```this is a code block```", (BlockType.CODE, "this is a code block")),
             ("- this is a \n- unordered list", (BlockType.UNORDERED_LIST, "this is a \nunordered list")),
             ("1. this is a \n2. ordered list", (BlockType.ORDERED_LIST, " this is a \n ordered list")),
@@ -116,6 +121,37 @@ This is the same paragraph on a new line
 
         for test in tests:
             self.assertEqual(block_to_block_type_extract(test[0]), test[1])
+
+
+    def test_paragraphs(self):
+        md = """This is **bolded** paragraph
+text in a p
+tag here
+
+This is another paragraph with _italic_ text and `code` here
+""" # Todo: empty newlines create new empty paragraps pls fix
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
+        )
+
+    def test_codeblock(self):
+        md = """
+```
+This is text that _should_ remain
+the **same** even with inline stuff
+```
+    """
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
+        )
 
 if __name__ == "__main__":
     unittest.main()
