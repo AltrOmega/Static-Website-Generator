@@ -105,5 +105,17 @@ This is the same paragraph on a new line
             ],
         )
 
+    def test_block_to_block_type_extract(self):
+        tests = [
+            ("this is a paragraph", (BlockType.PARAGRAPH, "this is a paragraph")),
+            ("1# this is a header", (BlockType.HEADING, " this is a header")),
+            ("```this is a code block```", (BlockType.CODE, "this is a code block")),
+            ("- this is a \n- unordered list", (BlockType.UNORDERED_LIST, "this is a \nunordered list")),
+            ("1. this is a \n2. ordered list", (BlockType.ORDERED_LIST, " this is a \n ordered list")),
+        ]
+
+        for test in tests:
+            self.assertEqual(block_to_block_type_extract(test[0]), test[1])
+
 if __name__ == "__main__":
     unittest.main()
