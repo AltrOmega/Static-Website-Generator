@@ -1,6 +1,6 @@
 from enum import Enum
 from htmlnode import LeafNode
-from typing import Tuple
+from typing import Tuple, List
 
 class PatternLiteral:
     def __init__(self, *args):
@@ -37,7 +37,7 @@ class TextType(Enum):
 
 def extract_pattern(text: str, text_type: TextType):
     pattern_literal = text_type.value
-    if pattern_literal.starts == []: return text
+    if pattern_literal.starts == []: return []
 
     #print(f'\ntext: ["{text}"]')
     i = None 
@@ -84,7 +84,7 @@ def extract_pattern(text: str, text_type: TextType):
 
 
 class TextNode:
-    def __init__(self, text: str, text_type: TextType, url: str=None):
+    def __init__(self, text: str, text_type: TextType, url: str=None, children=None):
         self.text = text
         self.text_type = text_type
         self.url = url

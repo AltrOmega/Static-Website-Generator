@@ -28,9 +28,11 @@ class TestTextNode(unittest.TestCase):
                 TextNode("italic", TextType.ITALIC),
                 TextNode(" text", TextType.TEXT),
             ]),
-            ("this is `code  ` text", TextType.CODE, [
+            ("this is `some ` `code` text", TextType.CODE, [
                 TextNode("this is ", TextType.TEXT),
-                TextNode("code  ", TextType.CODE),
+                TextNode("some ", TextType.CODE),
+                TextNode(" ", TextType.TEXT),
+                TextNode("code", TextType.CODE),
                 TextNode(" text", TextType.TEXT),
             ]),
         ]
@@ -43,54 +45,48 @@ class TestTextNode(unittest.TestCase):
                 test[2]
             )
 
+    def test_text_to_textnodes(self):
+        tests = [
+            ("this is **bolded** text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is __bolded__ text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is _italic_ text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is `some ` `code` text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("some ", TextType.CODE),
+                TextNode(" ", TextType.TEXT),
+                TextNode("code", TextType.CODE),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is `some code` and **bold** text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("some code", TextType.CODE),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("bold", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+        ]
+
+        for test in tests:
+            self.assertListEqual(
+                text_to_textnodes( test[0] ),
+                test[1]
+            )
 
 
-'''
-    def _test_extract_markdown_images(self):
-        matches = extract_markdown_images(
-            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
-        )
-        self.assertListEqual([("image", "https://i.imgur.com/zjjcJKZ.png")], matches)
-
-    def test_extract_markdown_links(self):
-        matches = extract_markdown_links(
-            "This is text with an [link](https://google.com)"
-        )
-        self.assertListEqual([("link", "https://google.com")], matches)
 
 
 
-    def test_split_images(self):
-        node = TextNode(
-            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)",
-            TextType.TEXT,
-        )
-        new_nodes = split_nodes_image([node])
-        self.assertListEqual(
-            new_nodes,
-            [
-                TextNode("This is text with an ", TextType.TEXT),
-                TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
-            ]
-        )
-
-    def _test_split_images_(self):
-        node = TextNode(
-            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
-            TextType.TEXT,
-        )
-        new_nodes = split_nodes_image([node])
-        self.assertListEqual(
-            new_nodes,
-            [
-                TextNode("This is text with an ", TextType.TEXT),
-                TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
-                TextNode(" and another ", TextType.TEXT),
-                TextNode(
-                    "second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"
-                ),
-            ]
-        )
-'''
 if __name__ == "__main__":
     unittest.main()
