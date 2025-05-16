@@ -61,9 +61,10 @@ def text_to_textnodes(text: str):
 
 
 def markdown_to_blocks(markdown: str):
-    split: List[str] = markdown.split('\n\n')
+    split: List[str] = re.split(r'\n\s*\n', markdown)
     split = list(filter(lambda x: x != '', split))
-    return list(map(lambda x: x.strip(), split))
+    ret = list(map(lambda x: x.strip(), split))
+    return ret
 
 
 
@@ -146,6 +147,7 @@ def markdown_to_html_node(markdown: str):
     children = []
     for block in blocks:
         type, content = block_to_block_type_extract(block)
+        #content = content.strip()
         if type != BlockType.CODE:
             # next line is a temp test remove/change later
             content = ' '.join(content.split('\n'))

@@ -123,35 +123,70 @@ This is the same paragraph on a new line
             self.assertEqual(block_to_block_type_extract(test[0]), test[1])
 
 
-    def test_paragraphs(self):
-        md = """This is **bolded** paragraph
-text in a p
-tag here
-
-This is another paragraph with _italic_ text and `code` here
-""" # Todo: empty newlines create new empty paragraps pls fix
-
-        node = markdown_to_html_node(md)
-        html = node.to_html()
-        self.assertEqual(
-            html,
-            "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
-        )
-
     def test_codeblock(self):
-        md = """
+        tests = [
+            ("""
 ```
 This is text that _should_ remain
 the **same** even with inline stuff
 ```
-    """
+    """, "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>"),
+            ("""```This is text that _should_ remain
+the **same** even with inline stuff
+``` """, "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>"),
+            ("""
+```
+This is text that _should_ remain
+the **same** even with inline stuff
+```
+    """, "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>"),
+        ]
 
-        node = markdown_to_html_node(md)
-        html = node.to_html()
-        self.assertEqual(
-            html,
-            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
-        )
+        for test in tests:
+            self.assertEqual(markdown_to_html_node(test[0]).to_html(), test[1])
+
+    def test_paragraphs(self):
+        tests = [
+            ("""
+
+paragraph
+and its newline
+
+""", "<div><p>paragraph and its newline</p></div>"), # dear god this looks disgusting
+            ("""
+
+paragraph
+and its newline
+             
+and another paragraph
+
+""", "<div><p>paragraph and its newline</p><p>and another paragraph</p></div>"),
+            ("""paragraph
+and its newline
+             
+
+
+and another paragraph
+""", "<div><p>paragraph and its newline</p><p>and another paragraph</p></div>"),
+            ("""This is **bolded** paragraph
+text in a p
+tag here
+
+This is another paragraph with _italic_ text and `code` here
+""", "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>"),
+            ("""This is **bolded** paragraph
+text in a __p__
+ta*g h*ere
+
+`This is another paragraph` with _italic_ text and `code` here
+""", "<div><p>This is <b>bolded</b> paragraph text in a <b>p</b> ta<i>g h</i>ere</p><p><code>This is another paragraph</code> with <i>italic</i> text and <code>code</code> here</p></div>"),
+        ]
+        
+
+        for test in tests:
+            self.assertEqual(markdown_to_html_node(test[0]).to_html(), test[1])
+
+
 
 if __name__ == "__main__":
     unittest.main()
