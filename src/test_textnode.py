@@ -77,15 +77,95 @@ class TestTextNode(unittest.TestCase):
             
     def test_extract_pattern(self):
         tests = [
-            ( extract_pattern("padding **ballder** __sus__more padding", TextType.BOLD), (["ballder"], 8, 19)),
-            ( extract_pattern("`code`", TextType.CODE), (["code"], 0, 6)),
-            ( extract_pattern("__bald__", TextType.BOLD), (["bald"], 0, 8 )),
-            ( extract_pattern("[link name](gugiel)", TextType.LINK), (["link name", "gugiel"], 0, 19)),
-            ( extract_pattern("![img fallback](some image link)", TextType.IMAGE), (["img fallback", "some image link"], 0, 32)),
+            (extract_pattern("padding **ballder** __sus__more padding", TextType.BOLD), (("ballder",), 8, 19)),
+            (extract_pattern("`code`", TextType.CODE), (("code",), 0, 6)),
+            (extract_pattern("__bald__", TextType.BOLD), (("bald",), 0, 8)),
+            (extract_pattern("[link name](gugiel)", TextType.LINK), (("link name", "gugiel"), 0, 19)),
+            (extract_pattern("![img fallback](some image link)", TextType.IMAGE), (("img fallback", "some image link"), 0, 32)),
         ]
+
 
         for test in tests:
             self.assertEqual(test[0], test[1])
+
+
+
+
+
+    def test_split_nodes_by_type(self):
+        tests = [
+            ("this is **bolded** text", TextType.BOLD, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is __bolded__ text", TextType.BOLD, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is _italic_ text", TextType.ITALIC, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is `some ` `code` text", TextType.CODE, [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("some ", TextType.CODE),
+                TextNode(" ", TextType.TEXT),
+                TextNode("code", TextType.CODE),
+                TextNode(" text", TextType.TEXT),
+            ]),
+        ]
+
+        for test in tests:
+            self.assertListEqual(
+                split_nodes_by_type(
+                    [TextNode(test[0], TextType.TEXT)], test[1]
+                    ),
+                test[2]
+            )
+
+    def test_text_to_textnodes(self):
+        tests = [
+            ("this is **bolded** text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is __bolded__ text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("bolded", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is _italic_ text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is `some ` `code` text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("some ", TextType.CODE),
+                TextNode(" ", TextType.TEXT),
+                TextNode("code", TextType.CODE),
+                TextNode(" text", TextType.TEXT),
+            ]),
+            ("this is `some code` and **bold** text", [
+                TextNode("this is ", TextType.TEXT),
+                TextNode("some code", TextType.CODE),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("bold", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ]),
+        ]
+
+        for test in tests:
+            self.assertListEqual(
+                text_to_textnodes( test[0] ),
+                test[1]
+            )
+
+
 
 if __name__ == "__main__":
     unittest.main()

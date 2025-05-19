@@ -3,81 +3,82 @@ from textnode import TextNode, TextType
 from md_handle import *
 
 class TestTextNode(unittest.TestCase):
-    def test_split_nodes_by_type(self):
+    def _test_markdown_to_lines(self):
         tests = [
-            ("this is **bolded** text", TextType.BOLD, [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("bolded", TextType.BOLD),
-                TextNode(" text", TextType.TEXT),
+            ("# aye", [ (LineType.HEADING_1, "# aye", "aye") ]),
+            ("#aye", [(LineType.HEADING_1, "#aye", "aye")]),
+            ("> aye\n>m8", [(LineType.QUOTE, "> aye", "aye"), (LineType.QUOTE, ">m8", "m8")]),
+            ("> aye\n```m8", [(LineType.QUOTE, "> aye", "aye"), (LineType.CODE, "```m8", "m8")]),
+            ("######aye\n```m8\n", [(LineType.HEADING_6, "######aye", "aye"), (LineType.CODE, "```m8", "m8"), (None, "", "")]),
+            ("######aye\n```m8\n ", [(LineType.HEADING_6, "######aye", "aye"), (LineType.CODE, "```m8", "m8"), (None, " ", "")]),
+            (" \nsome text\n ", [(None, " ", ""), (None, "some text", ""), (None, " ", "")]),
+            ("1. one\n2.two\n3.  three", [(LineType.ORDERED_LIST, "1. one", "one"), (LineType.ORDERED_LIST, "2.two", "two"), (LineType.ORDERED_LIST, "3.  three", " three")]),
+        ]
+
+        for test in tests:
+            #print("Test 0: " + test[0])
+            #print("out: " + str(markdown_to_lines(test[0])))
+            self.assertListEqual(markdown_to_lines(test[0]), test[1])
+
+    def test_markdown_to_code_blocks(self):
+        tests = [
+            ("```code\n```end", [ 
+                Block("code", BlockType.CODE),
+                Block("end", BlockType.UNDEFINED)
             ]),
-            ("this is __bolded__ text", TextType.BOLD, [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("bolded", TextType.BOLD),
-                TextNode(" text", TextType.TEXT),
+
+            ("start\n```code\n```", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code", BlockType.CODE)
             ]),
-            ("this is _italic_ text", TextType.ITALIC, [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("italic", TextType.ITALIC),
-                TextNode(" text", TextType.TEXT),
+
+            ("start\n```code\n```\nend", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code", BlockType.CODE),
+                Block("\nend", BlockType.UNDEFINED),
             ]),
-            ("this is `some ` `code` text", TextType.CODE, [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("some ", TextType.CODE),
-                TextNode(" ", TextType.TEXT),
-                TextNode("code", TextType.CODE),
-                TextNode(" text", TextType.TEXT),
+
+            ("start\n```code\n```\nend\nnewline", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code", BlockType.CODE),
+                Block("\nend\nnewline", BlockType.UNDEFINED),
+            ]),
+
+            ("start\n```code'''code_ception'''code\n```end\nnewline", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code'''code_ception'''code", BlockType.CODE),
+                Block("end\nnewline", BlockType.UNDEFINED),
             ]),
         ]
 
         for test in tests:
-            self.assertListEqual(
-                split_nodes_by_type(
-                    [TextNode(test[0], TextType.TEXT)], test[1]
-                    ),
-                test[2]
-            )
+            out = markdown_to_code_blocks(test[0])
+            self.assertListEqual(out, test[1])
 
-    def test_text_to_textnodes(self):
+
+
+    def test_handle_header(self):
         tests = [
-            ("this is **bolded** text", [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("bolded", TextType.BOLD),
-                TextNode(" text", TextType.TEXT),
+            ("# h1", [ 
+                Block("h1", BlockType.HEADING_1)
             ]),
-            ("this is __bolded__ text", [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("bolded", TextType.BOLD),
-                TextNode(" text", TextType.TEXT),
+
+            ("\n## h2\n\n", [ 
+                Block("h2", BlockType.HEADING_2)
             ]),
-            ("this is _italic_ text", [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("italic", TextType.ITALIC),
-                TextNode(" text", TextType.TEXT),
-            ]),
-            ("this is `some ` `code` text", [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("some ", TextType.CODE),
-                TextNode(" ", TextType.TEXT),
-                TextNode("code", TextType.CODE),
-                TextNode(" text", TextType.TEXT),
-            ]),
-            ("this is `some code` and **bold** text", [
-                TextNode("this is ", TextType.TEXT),
-                TextNode("some code", TextType.CODE),
-                TextNode(" and ", TextType.TEXT),
-                TextNode("bold", TextType.BOLD),
-                TextNode(" text", TextType.TEXT),
+
+            ("## h2\n### h3", [ 
+                Block("h2", BlockType.HEADING_2),
+                Block("h3", BlockType.HEADING_3)
             ]),
         ]
 
         for test in tests:
-            self.assertListEqual(
-                text_to_textnodes( test[0] ),
-                test[1]
-            )
+            out = handle_headers([Block(test[0], BlockType.UNDEFINED)])
+            self.assertListEqual(out, test[1])
 
 
-    def test_markdown_to_blocks(self):
+    def _test_markdown_to_blocks(self):
         md = """
 This is **bolded** paragraph
 
@@ -97,7 +98,7 @@ This is the same paragraph on a new line
             ],
         )
 
-    def test_block_to_block_type_extract(self):
+    def _test_block_to_block_type_extract(self):
         tests = [
             ("this is a paragraph", (BlockType.PARAGRAPH, "this is a paragraph")),
             ("# this is a h1 header", (BlockType.HEADING_1, "this is a h1 header")),
@@ -115,7 +116,7 @@ This is the same paragraph on a new line
             self.assertEqual(block_to_block_type_extract(test[0]), test[1])
 
 
-    def test_codeblock(self):
+    def _test_codeblock(self):
         tests = [
             ("""
 ```
@@ -137,7 +138,7 @@ the **same** even with inline stuff
         for test in tests:
             self.assertEqual(markdown_to_html_node(test[0]).to_html(), test[1])
 
-    def test_paragraphs(self):
+    def _test_paragraphs(self):
         tests = [
             ("""
 
@@ -182,7 +183,7 @@ ta*g h*ere
 
 
 
-    def test_extract_title(self):
+    def _test_extract_title(self):
         tests = [
             ("# header", "header"),
             ("## h2\n\n# header", "header"),

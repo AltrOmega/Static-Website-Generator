@@ -1,90 +1,36 @@
 from enum import Enum
 from htmlnode import LeafNode
-from typing import Tuple, List
+from typing import List
+from regex_helpers import *
 
-class PatternLiteral:
-    def __init__(self, *args):
-        self.patterns: Tuple[str] = args
-        self.starts = []
-        self.ends = []
+"""
+Those patterns are for readability.
+They will get turn to a non greedy regex pattern where
+% is a capture everything.
 
-        for pattern in self.patterns:
-            split: list = pattern.split('%')
-            if '' in split:
-                count = split.count('')
-                if len(split) != count:
-                    raise ValueError("Missing closing pattern in PatternLiteral definition.")
-                return
-            
-            self.starts.append(split[0])
-            self.ends.append( (*split[1:],) )
-
-
-
-
-
+The patterns will get searched in the order they are defined in the enum.
+"""
 class TextType(Enum):
-    TEXT = PatternLiteral('%')
-    BOLD = PatternLiteral('**%**','__%__')
-    ITALIC = PatternLiteral('*%*','_%_')
-    CODE = PatternLiteral('`%`',)
-    IMAGE = PatternLiteral('![%](%)',) # Todo: couses an error pls fix
-    LINK = PatternLiteral('[%](%)',)
-
-            
-
-
+    IMAGE = strings_to_regexes('![%](%)')
+    LINK = strings_to_regexes('[%](%)')
+    BOLD = strings_to_regexes('**%**','__%__')
+    ITALIC = strings_to_regexes('*%*','_%_')
+    CODE = strings_to_regexes('`%`')
+    TEXT = () 
 
 def extract_pattern(text: str, text_type: TextType):
-    pattern_literal = text_type.value
-    if pattern_literal.starts == []: return []
-
-    #print(f'\ntext: ["{text}"]')
-    i = None 
-    open_pattern_index = None
-    open_text_index = None
-    for i in range(len(pattern_literal.starts)):
-        start = pattern_literal.starts[i]
-
-        open_pattern_index = text.find(start)
-        if open_pattern_index != -1:
-            open_text_index = open_pattern_index + len(start)
-            break
-    if open_pattern_index == -1:
-        return []
-    global_open_pattern_index = open_pattern_index
-    global_close_pattern_index = 0
-    extract = []
-    end = '' 
-    #print(f"\no[{open_pattern_index}:{text[open_pattern_index]}] ; [{open_text_index}:{text[open_text_index]}]")
-    for j in range(len(pattern_literal.ends[i])):
-        end = pattern_literal.ends[i][j]
-
-        close_text_index = text.find(end, open_text_index)
-        if close_text_index == -1: 
-            raise ValueError(f"Given text is a missing closing pattern. ;{text}")
-        global_close_pattern_index += close_text_index
-
-        capture = text[open_text_index:close_text_index]
-        extract.append(capture)
-
-        #print(f"c[{close_text_index-1}:{text[close_text_index-1]}] ; [{close_pattern_index-1}:{text[close_pattern_index-1]}]")
-        #print(f'capture: ["{capture}"]')
-        text = text[close_text_index:]
-
-        # will probably need to adjust the indexes here slightly
-        open_pattern_index = 0 
-        open_text_index = len(end)
-
-    
-    return (extract, global_open_pattern_index, global_close_pattern_index + len(end))
+    for pattern in text_type.value:
+        match_ = pattern.search(text)
+        if match_:
+            return match_.groups(), match_.start(0), match_.end(0)
+    return None
 
 
 
 
 
 class TextNode:
-    def __init__(self, text: str, text_type: TextType, url: str=None, children=None):
+    def __init__(self, text: str, text_type: TextType, url: str=None):
         self.text = text
         self.text_type = text_type
         self.url = url
@@ -97,10 +43,7 @@ class TextNode:
         )
 
     def __repr__(self):
-        #TextNode(TEXT, TEXT_TYPE, URL)
         return f"TextNode({self.text}, {self.text_type}, {self.url})"
-
-
 
 def text_node_to_html_node(text_node):
     match text_node.text_type:
@@ -122,3 +65,38 @@ def text_node_to_html_node(text_node):
         case TextType.IMAGE:
             return LeafNode('img', None, props={'src': text_node.url, 'alt': text_node.text})
 
+
+
+
+
+def split_nodes_by_type(old_nodes: List[TextNode], text_type: TextType):
+    new_nodes: List[TextNode] = []
+    for node in old_nodes:
+        extract = extract_pattern(node.text, text_type)
+
+        if extract == None:
+            new_nodes.append(node)
+            continue
+        
+        contents, open_index, close_index = extract
+
+        new_nodes.append(TextNode(node.text[:open_index], TextType.TEXT))
+
+        url = None
+        if len(contents) > 1:
+            url = contents[1]
+        new_nodes.append( TextNode(contents[0], text_type, url) )
+        new_nodes.extend( split_nodes_by_type( [TextNode(node.text[close_index:], TextType.TEXT)], text_type ) )
+
+    return new_nodes
+
+
+
+
+
+def text_to_textnodes(text: str):
+    nodes = [TextNode(text, TextType.TEXT)]
+    for text_type in TextType:
+        nodes = split_nodes_by_type(nodes, text_type)
+
+    return nodes

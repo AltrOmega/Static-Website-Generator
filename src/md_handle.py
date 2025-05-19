@@ -1,7 +1,7 @@
-from textnode import TextType, TextNode, extract_pattern, text_node_to_html_node
+from textnode import *
 from htmlnode import *
 from typing import List
-import re
+from regex_helpers import *
 from enum import Enum
 
 class BlockType(Enum):
@@ -16,48 +16,171 @@ class BlockType(Enum):
     QUOTE = 'blockquote'
     UNORDERED_LIST = 'ul'
     ORDERED_LIST = 'ol'
+    LIST_INDEX = 'li'
+    UNDEFINED = None
 
 
 
+class Block:
+    def __init__(self, block_text: str, block_type=BlockType.UNDEFINED):
+        self.text = block_text
+        self.type = block_type
+
+    def __repr__(self):
+        return f"{self.type} |>{self.text}<|"
+    
+    def __eq__(self, other):
+        return self.type == other.type and self.text == other.text
 
 
 
-def split_nodes_by_type(old_nodes: List[TextNode], text_type: TextType):
-    new_nodes: List[TextNode] = []
-    for node in old_nodes:
-        extract = extract_pattern(node.text, text_type)
+def markdown_to_code_blocks(markdown: str) -> List[Block]:
+    regex_str = (r"(?:\n|^)```([\s\S]*?)\n```")
+    regex = re.compile(regex_str, flags=re.MULTILINE | re.DOTALL)
+    
+    text: str = markdown
+    out = []
+    match_ = regex.search(text)
+    while match_ != None:
+        split = text.split(match_.group(0), maxsplit=1)
 
-        if extract == []:
-            new_nodes.append(node)
+        if split[0].strip() != '':
+            out.append(Block(split[0], BlockType.UNDEFINED))
+
+        out.append(Block(match_.group(1), BlockType.CODE))
+
+        if split[1].strip() != '':
+            out.append(Block(split[1], BlockType.UNDEFINED))
+        # Should not be appending split[1] untill its out of the loop
+        # just asighn to text todo: fix and add unittest that faill if you dont
+
+
+        text = split[-1]
+        match_ = regex.search(text)
+    
+    if len(out) == 0:
+        return [Block(markdown, BlockType.UNDEFINED)]
+
+    return out
+
+
+
+def handle_headers(blocks: List[Block]):
+    regex_str = r"(?:^|\n)(#{1,6}) (.*)"
+    regex = re.compile(regex_str)
+    out = []
+    for block in blocks:
+        if block.type != BlockType.UNDEFINED:
+            out.append(block)
             continue
+            
+        match_ = regex.search(block.text)
+        text = block.text
+        split = None
+        while match_ != None:
+            split = text.split(match_.group(0), maxsplit=1)
+
+            if split[0].strip() != '':
+                out.append(Block(split[0], BlockType.UNDEFINED))
+
+            header_type = BlockType.HEADING_1
+            match len(match_.group(1)):
+                case 2:
+                    header_type = BlockType.HEADING_2
+                case 3:
+                    header_type = BlockType.HEADING_3
+                case 4:
+                    header_type = BlockType.HEADING_4
+                case 5:
+                    header_type = BlockType.HEADING_5
+                case 6:
+                    header_type = BlockType.HEADING_6
+
+            out.append(Block(match_.group(2), header_type))
+
+            text = split[-1]
+            match_ = regex.search(text)
+
+        if split[1].strip() != '':
+            out.append(Block(split[1], BlockType.UNDEFINED))
+    return out
+
+
+
+def markdown_to_bloks(markdown: str) -> List[Block]:
+    blocks = markdown_to_code_blocks(markdown)
+    blocks = handle_headers(blocks)
+    # Todo: first fixt the todo in markdown_to_code_blocks then continue here
+
+    return blocks
+
+
+
+
+
+'''
+class LineType(Enum): # probably no need for the extra space after deliminator, since will strip it either way
+    HEADING_6 = strings_begin_to_regexes('###### %', '######%')
+    HEADING_5 = strings_begin_to_regexes('##### %', '#####%')
+    HEADING_4 = strings_begin_to_regexes('#### %', '####%')
+    HEADING_3 = strings_begin_to_regexes('### %', '###%')
+    HEADING_2 = strings_begin_to_regexes('## %', '##%')
+    HEADING_1 = strings_begin_to_regexes('# %', '#%')
+    QUOTE = strings_begin_to_regexes('> %', '>%')
+    UNOREDERED_LIST = strings_begin_to_regexes('- %', '-%')
+    ORDERED_LIST = (re.compile(r"^\d+\.\s?(.*$)"),)# ("number. %", "number.%")
+    CODE = strings_begin_to_regexes('``` %', '```%')
+
+def markdown_to_lines(markdown: str):
+    lines = []
+    for line in markdown.split('\n'):
+        found = False
+        for line_type in LineType:
+            for regex in line_type.value:
+                match_ = regex.search(line)
+                if match_:
+                    lines.append( (line_type, line, match_.group(1)) )
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            lines.append( (None, line, ''))
+            found = False
+    return lines
+
+def lines_to_blocks(lines: Tuple[LineType|None, str, str]):
+    blocks = []
+    in_code_block = False
+    order_num = 0
+    for i in range(len(lines)):
+        line = lines[i]
+        line_type, whole, capture = line
+
+        if in_code_block:
+            pass
+
+        match line_type:
+            case LineType.CODE:
+                
+
+            case None:
+                blocks.append((BlockType.PARAGRAPH, whole))
+
+            case LineType.HEADING_1:
+                blocks.append((BlockType.HEADING_1, capture.strip()))
+            case LineType.HEADING_2:
+                blocks.append((BlockType.HEADING_2, capture.strip()))
+            case LineType.HEADING_3:
+                blocks.append((BlockType.HEADING_3, capture.strip()))
+            case LineType.HEADING_4:
+                blocks.append((BlockType.HEADING_4, capture.strip()))
+            case LineType.HEADING_5:
+                blocks.append((BlockType.HEADING_5, capture.strip()))
+            case LineType.HEADING_6:
+                blocks.append((BlockType.HEADING_6, capture.strip()))
+
         
-        contents = extract[0]
-        open_index = extract[1]
-        close_index = extract[2]
-        new_nodes.append(TextNode(node.text[:open_index], TextType.TEXT))
-
-        url = None
-        if len(contents) > 1:
-            url = contents[1]
-        this = split_nodes_by_type
-        new_nodes.append( TextNode(contents[0], text_type, url) )
-        new_nodes.extend( this( [TextNode(node.text[close_index:], TextType.TEXT)], text_type ) )
-
-    return new_nodes
-
-
-
-
-
-def text_to_textnodes(text: str):
-    nodes = [TextNode(text, TextType.TEXT)]
-    for text_type in TextType:
-        nodes = split_nodes_by_type(nodes, text_type)
-
-    return nodes
-
-
-
 
 
 def markdown_to_blocks(markdown: str):
@@ -65,7 +188,7 @@ def markdown_to_blocks(markdown: str):
     split = list(filter(lambda x: x != '', split))
     ret = list(map(lambda x: x.strip(), split))
     return ret
-
+'''           
 
 
 
