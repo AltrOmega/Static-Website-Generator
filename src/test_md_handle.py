@@ -3,14 +3,6 @@ from textnode import TextNode, TextType
 from md_handle import *
 
 class TestTextNode(unittest.TestCase):
-    def _test_split_nodes_delimiter(self):
-        test = TextNode("amogus **ballder** sus", TextType.TEXT)
-        self.assertEqual(split_nodes_delimiter([test], '**', TextType.BOLD),[
-            TextNode("amogus ", TextType.TEXT),
-            TextNode("ballder", TextType.BOLD),
-            TextNode(" sus", TextType.TEXT),
-        ])
-
     def test_split_nodes_by_type(self):
         tests = [
             ("this is **bolded** text", TextType.BOLD, [
@@ -157,13 +149,13 @@ and its newline
 
 paragraph
 and its newline
-             
+            
 and another paragraph
 
 """, "<div><p>paragraph and its newline</p><p>and another paragraph</p></div>"),
             ("""paragraph
 and its newline
-             
+            
 
 
 and another paragraph
@@ -174,17 +166,31 @@ tag here
 
 This is another paragraph with _italic_ text and `code` here
 """, "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>"),
-            ("""This is **bolded** paragraph
+            ("""error?: This is **bolded** paragraph
 text in a __p__
 ta*g h*ere
 
 `This is another paragraph` with _italic_ text and `code` here
-""", "<div><p>This is <b>bolded</b> paragraph text in a <b>p</b> ta<i>g h</i>ere</p><p><code>This is another paragraph</code> with <i>italic</i> text and <code>code</code> here</p></div>"),
+""", "<div><p>error?: This is <b>bolded</b> paragraph text in a <b>p</b> ta<i>g h</i>ere</p><p><code>This is another paragraph</code> with <i>italic</i> text and <code>code</code> here</p></div>"),
+
+# ---------------------------
         ]
-        
 
         for test in tests:
+            print(f"\n\n\nTESTING; {test[0]} ;TESTING")
             self.assertEqual(markdown_to_html_node(test[0]).to_html(), test[1])
+
+
+
+    def test_extract_title(self):
+        tests = [
+            ("# header", "header"),
+            ("## h2\n\n# header", "header"),
+            ("this is a paragraph i think\n\n# header\n\nhere is another", "header"),
+        ]
+
+        for test in tests:
+            self.assertEqual(extract_title(test[0]), test[1])
 
 
 

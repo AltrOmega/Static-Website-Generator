@@ -37,10 +37,11 @@ class LeafNode(HTMLNode):
     
     # Override
     def to_html(self):
-        if self.value == None: # or self.value == '': #<- this braks stuff for some reason
+        print(f"LeafNode; \'{self.tag}\' | \"{self.value}\" ;LeafNode")
+        if self.value == None or self.value == '':
             raise ValueError("LeafNode has to have a value.")
         
-        if self.tag == None:
+        if self.tag == None or self.tag == '':
             return self.value
 
         return f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
@@ -63,6 +64,7 @@ class ParentNode(HTMLNode):
 
         children_val = ""
         for child in self.children:
-            children_val += child.to_html()
+            if (child.value == None or child.value == '') and (child.tag == None or child.tag == ''):
+                children_val += child.to_html()
         
         return f"<{self.tag}{self.props_to_html()}>{children_val}</{self.tag}>"

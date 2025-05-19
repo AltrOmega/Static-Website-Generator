@@ -28,8 +28,8 @@ class TextType(Enum):
     BOLD = PatternLiteral('**%**','__%__')
     ITALIC = PatternLiteral('*%*','_%_')
     CODE = PatternLiteral('`%`',)
+    IMAGE = PatternLiteral('![%](%)',) # Todo: couses an error pls fix
     LINK = PatternLiteral('[%](%)',)
-    IMAGE = PatternLiteral('![%](%)',)
 
             
 

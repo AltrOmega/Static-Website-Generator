@@ -144,9 +144,13 @@ def markdown_to_html_node(markdown: str):
         return ParentNode(type.value, html_nodes, None)
 
     blocks = markdown_to_blocks(markdown)
+    print(f"blocks: |||{blocks}|||")
     children = []
     for block in blocks:
+        if block == '': continue
         type, content = block_to_block_type_extract(block)
+        if content == '': continue
+        print(f"type: |||{type}|||\ncontent: |||{content}|||")
         #content = content.strip()
         if type != BlockType.CODE:
             # next line is a temp test remove/change later
@@ -157,3 +161,12 @@ def markdown_to_html_node(markdown: str):
             children.append(ParentNode('pre', html_node, None))
 
     return ParentNode('div', children)
+
+
+def extract_title(markdown):
+    blocks = markdown_to_blocks(markdown)
+    for block in blocks:
+        type, content = block_to_block_type_extract(block)
+        if type == BlockType.HEADING_1:
+            return content
+    raise ValueError("Given markdown has no h1 header to extract the title from.")
