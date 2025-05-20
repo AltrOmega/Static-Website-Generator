@@ -22,15 +22,19 @@ class BlockType(Enum):
 
 
 class Block:
-    def __init__(self, block_text: str, block_type=BlockType.UNDEFINED):
+    def __init__(self, block_text: str = '', block_type=BlockType.UNDEFINED, inner_blocks=[]):
         self.text = block_text
         self.type = block_type
+        self.inner_blocks = inner_blocks
 
     def __repr__(self):
-        return f"{self.type} |>{self.text}<|"
+        if self.inner_blocks == []:
+            return f"{self.type} |>{self.text}<|"
+        else:
+            return f"{self.type} {self.inner_blocks}"
     
     def __eq__(self, other):
-        return self.type == other.type and self.text == other.text
+        return self.type == other.type and self.text == other.text and self.inner_blocks == other.inner_blocks
 
 
 
@@ -41,6 +45,7 @@ def markdown_to_code_blocks(markdown: str) -> List[Block]:
     text: str = markdown
     out = []
     match_ = regex.search(text)
+    split = None
     while match_ != None:
         split = text.split(match_.group(0), maxsplit=1)
 
@@ -49,14 +54,11 @@ def markdown_to_code_blocks(markdown: str) -> List[Block]:
 
         out.append(Block(match_.group(1), BlockType.CODE))
 
-        if split[1].strip() != '':
-            out.append(Block(split[1], BlockType.UNDEFINED))
-        # Should not be appending split[1] untill its out of the loop
-        # just asighn to text todo: fix and add unittest that faill if you dont
-
-
         text = split[-1]
         match_ = regex.search(text)
+
+    if split is not None and split[1].strip() != '':
+        out.append(Block(split[1], BlockType.UNDEFINED))
     
     if len(out) == 0:
         return [Block(markdown, BlockType.UNDEFINED)]
@@ -79,7 +81,6 @@ def handle_headers(blocks: List[Block]):
         split = None
         while match_ != None:
             split = text.split(match_.group(0), maxsplit=1)
-
             if split[0].strip() != '':
                 out.append(Block(split[0], BlockType.UNDEFINED))
 
@@ -101,189 +102,194 @@ def handle_headers(blocks: List[Block]):
             text = split[-1]
             match_ = regex.search(text)
 
-        if split[1].strip() != '':
+        #print(f"Final SPLIT: ;{split};")
+        if split is not None and split[1].strip() != '':
             out.append(Block(split[1], BlockType.UNDEFINED))
+        elif split is None and block.type == BlockType.UNDEFINED:
+            out.append(block)
+
+        
     return out
+
+
+
+def handle_quotes(blocks : List[Block]):
+    regex_str = r"(\n(?:>\s*(.*?)(?:\n|$))+)"
+    regex = re.compile(regex_str, flags=re.MULTILINE)
+    out = []
+    for block in blocks:
+        if block.type != BlockType.UNDEFINED:
+            out.append(block)
+            continue
+            
+        match_ = regex.search(block.text)
+        text = block.text
+        split = None
+        while match_ != None:
+            split = text.split(match_.group(0), maxsplit=1)
+
+            if split[0].strip() != '':
+                out.append(Block(split[0], BlockType.UNDEFINED))
+
+            first = True
+            extract = None
+            lines = match_.group(0).split('\n')
+            for line in lines:
+                if line.startswith('> '):
+                    if first:
+                        extract = f"{line[2:]}"
+                        first = False
+                    else:
+                        extract = f"{extract} {line[2:]}"
+
+            
+            out.append(Block(extract, BlockType.QUOTE))
+
+            text = split[-1]
+            match_ = regex.search(text)
+
+        if split is not None and split[1].strip() != '':
+            out.append(Block(split[1], BlockType.UNDEFINED))
+        elif split is None and block.type == BlockType.UNDEFINED:
+            out.append(block)
+    return out
+
+
+
+def handle_unordered_lists(blocks: List[Block]):
+    out = []
+    line = None
+    for block in blocks:
+        if block.type != BlockType.UNDEFINED:
+            out.append(block)
+            continue
+
+        lines = block.text.split('\n')
+        
+        undefineds = []
+        exctracts = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if not lines[i].startswith('- '):
+                undefineds.append(lines[i])
+                i+=1
+                continue
+
+            if undefineds != []:
+                out.append(Block('\n'.join(undefineds), BlockType.UNDEFINED))
+                undefineds = []
+            while i < len(lines) and lines[i].startswith('- '):
+                exctracts.append(lines[i][2:])
+                i+=1
+            
+            out.append(Block('', BlockType.UNORDERED_LIST, 
+                list(map(lambda x: Block(x.strip(), BlockType.LIST_INDEX), exctracts)))
+            )
+            exctracts = []
+
+        temp = '\n'.join(undefineds)
+        if undefineds != [] and temp.strip() != '':
+            out.append(Block(temp, BlockType.UNDEFINED))
+    '''
+    if line is not None and line.strip() != '':
+        out.append(Block(line, BlockType.UNDEFINED))
+    elif line is None and block.type == BlockType.UNDEFINED:
+        out.append(block)
+    '''
+
+    if out == []:
+        return blocks
+    return out
+    
+
+
+def handle_ordered_lists(blocks: List[Block]):
+    regex = re.compile(r"^(\d+).(.*)$")
+    out = []
+    for block in blocks:
+        if block.type != BlockType.UNDEFINED:
+            out.append(block)
+            continue
+
+        lines = block.text.split('\n')
+        
+        undefineds = []
+        exctracts = []
+        i = 0
+        while i < len(lines):
+            if regex.search(lines[i]) == None:
+                undefineds.append(lines[i])
+                i+=1
+                continue
+
+            if undefineds != []:
+                out.append(Block('\n'.join(undefineds), BlockType.UNDEFINED))
+                undefineds = []
+            match_ = regex.search(lines[i])
+            j = 1
+            #print(f"MATCH: {match_.group(1)}")
+            while i < len(lines) and match_ != None and int(match_.group(1)) == j:
+                exctracts.append(match_.group(2))
+                j += 1
+                i+=1
+                if i < len(lines):
+                    match_ = regex.search(lines[i])
+            
+            out.append(Block('', BlockType.ORDERED_LIST, 
+                list(map(lambda x: Block(x.strip(), BlockType.LIST_INDEX), exctracts)))
+            )
+            exctracts = []
+
+        temp = '\n'.join(undefineds)
+        if undefineds != [] and temp.strip() != '':
+            out.append(Block(temp, BlockType.UNDEFINED))
+
+    if out == []:
+        return blocks
+    return out
+    
+
+
+def undefined_to_paragraph(block: Block):
+    if block.type == BlockType.UNDEFINED:
+        return Block(block.text, BlockType.PARAGRAPH)
+    return block
+
+def undefined_to_paragraphs(blocks: List[Block]):
+    return list(map(lambda x: undefined_to_paragraph(x), blocks))
+
 
 
 
 def markdown_to_bloks(markdown: str) -> List[Block]:
     blocks = markdown_to_code_blocks(markdown)
     blocks = handle_headers(blocks)
-    # Todo: first fixt the todo in markdown_to_code_blocks then continue here
-
+    blocks = handle_quotes(blocks)
+    blocks = handle_unordered_lists(blocks)
+    blocks = handle_ordered_lists(blocks)
+    blocks = undefined_to_paragraphs(blocks)
     return blocks
 
 
+def block_to_html_node(block: Block):
+    if block.type not in [BlockType.UNORDERED_LIST, BlockType.ORDERED_LIST]:
+        return LeafNode(block.type.value, block.text)
+    else:
+        return ParentNode(block.type.value, list(map(lambda x: block_to_html_node(x), block.inner_blocks)))
 
-
-
-'''
-class LineType(Enum): # probably no need for the extra space after deliminator, since will strip it either way
-    HEADING_6 = strings_begin_to_regexes('###### %', '######%')
-    HEADING_5 = strings_begin_to_regexes('##### %', '#####%')
-    HEADING_4 = strings_begin_to_regexes('#### %', '####%')
-    HEADING_3 = strings_begin_to_regexes('### %', '###%')
-    HEADING_2 = strings_begin_to_regexes('## %', '##%')
-    HEADING_1 = strings_begin_to_regexes('# %', '#%')
-    QUOTE = strings_begin_to_regexes('> %', '>%')
-    UNOREDERED_LIST = strings_begin_to_regexes('- %', '-%')
-    ORDERED_LIST = (re.compile(r"^\d+\.\s?(.*$)"),)# ("number. %", "number.%")
-    CODE = strings_begin_to_regexes('``` %', '```%')
-
-def markdown_to_lines(markdown: str):
-    lines = []
-    for line in markdown.split('\n'):
-        found = False
-        for line_type in LineType:
-            for regex in line_type.value:
-                match_ = regex.search(line)
-                if match_:
-                    lines.append( (line_type, line, match_.group(1)) )
-                    found = True
-                    break
-            if found:
-                break
-        if not found:
-            lines.append( (None, line, ''))
-            found = False
-    return lines
-
-def lines_to_blocks(lines: Tuple[LineType|None, str, str]):
-    blocks = []
-    in_code_block = False
-    order_num = 0
-    for i in range(len(lines)):
-        line = lines[i]
-        line_type, whole, capture = line
-
-        if in_code_block:
-            pass
-
-        match line_type:
-            case LineType.CODE:
-                
-
-            case None:
-                blocks.append((BlockType.PARAGRAPH, whole))
-
-            case LineType.HEADING_1:
-                blocks.append((BlockType.HEADING_1, capture.strip()))
-            case LineType.HEADING_2:
-                blocks.append((BlockType.HEADING_2, capture.strip()))
-            case LineType.HEADING_3:
-                blocks.append((BlockType.HEADING_3, capture.strip()))
-            case LineType.HEADING_4:
-                blocks.append((BlockType.HEADING_4, capture.strip()))
-            case LineType.HEADING_5:
-                blocks.append((BlockType.HEADING_5, capture.strip()))
-            case LineType.HEADING_6:
-                blocks.append((BlockType.HEADING_6, capture.strip()))
-
-        
-
-
-def markdown_to_blocks(markdown: str):
-    split: List[str] = re.split(r'\n\s*\n', markdown)
-    split = list(filter(lambda x: x != '', split))
-    ret = list(map(lambda x: x.strip(), split))
-    return ret
-'''           
-
-
-
-
-def block_to_block_type_extract(block: str):
-    l = len(block)
-
-    if l >= 2 and block[0] == '#':
-        if l >= 7 and block[:7] == '###### ':
-            return BlockType.HEADING_6, block[7:]
-        if l >= 6 and block[:6] == '##### ':
-            return BlockType.HEADING_5, block[6:]
-        if l >= 5 and block[:5] == '#### ':
-            return BlockType.HEADING_4, block[5:]
-        if l >= 4 and block[:4] == '### ':
-            return BlockType.HEADING_3, block[4:]
-        if l >= 3 and block[:3] == '## ':
-            return BlockType.HEADING_2, block[3:]
-
-        return BlockType.HEADING_1, block[2:]
-    
-    if l >= 6 and block[:3] == '```' and block[-3:] == '```':
-        return BlockType.CODE, block[3:-3].lstrip('\n')
-    
-    every_line = block.split('\n')
-    ye = True
-    extract = []
-    for line in every_line:
-        if len(line) < 1 or line[0] != '>':
-            ye = False
-            break
-
-        extract.append(line[1:])
-
-    if ye == True:
-        return BlockType.QUOTE, '\n'.join(extract)
-    
-
-    ye = True
-    extract = []
-    for line in every_line:
-        if len(line) < 2 or line[:2] != '- ':
-            ye = False
-            break
-
-        extract.append(line[2:])
-    if ye == True:
-        return BlockType.UNORDERED_LIST, '\n'.join(extract)
-    
-
-    ye = True
-    i = 0
-    extract = []
-    for line in every_line:
-        i+=1
-        if len(line) < 2 or line[:2] != f'{i}.':
-            ye = False
-            break
-
-        extract.append(line[2:])
-    if ye == True:
-        return BlockType.ORDERED_LIST, '\n'.join(extract)
-    
-
-    return BlockType.PARAGRAPH, block
-
-
-
-
-
-def markdown_to_html_node(markdown: str):
-
-    def helper(type, content):
-        text_nodes = text_to_textnodes(content)
-        html_nodes = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
-        return ParentNode(type.value, html_nodes, None)
-
-    blocks = markdown_to_blocks(markdown)
-    print(f"blocks: |||{blocks}|||")
-    children = []
-    for block in blocks:
-        if block == '': continue
-        type, content = block_to_block_type_extract(block)
-        if content == '': continue
-        print(f"type: |||{type}|||\ncontent: |||{content}|||")
-        #content = content.strip()
-        if type != BlockType.CODE:
-            # next line is a temp test remove/change later
-            content = ' '.join(content.split('\n'))
-            children.append(helper(type, content))
-        else:
-            html_node = [LeafNode('code', content)]
-            children.append(ParentNode('pre', html_node, None))
-
+def blocks_to_html_node(blocks: List[Block]):
+    children = list(map(lambda x: block_to_html_node(x), blocks))
     return ParentNode('div', children)
+
+
+
+
+
+# Todo: start here, write unit tests for this function
+def markdown_to_html_node(markdown: str):
+    blocks = markdown_to_bloks(markdown)
+    return blocks_to_html_node(blocks)
 
 
 def extract_title(markdown):

@@ -3,23 +3,6 @@ from textnode import TextNode, TextType
 from md_handle import *
 
 class TestTextNode(unittest.TestCase):
-    def _test_markdown_to_lines(self):
-        tests = [
-            ("# aye", [ (LineType.HEADING_1, "# aye", "aye") ]),
-            ("#aye", [(LineType.HEADING_1, "#aye", "aye")]),
-            ("> aye\n>m8", [(LineType.QUOTE, "> aye", "aye"), (LineType.QUOTE, ">m8", "m8")]),
-            ("> aye\n```m8", [(LineType.QUOTE, "> aye", "aye"), (LineType.CODE, "```m8", "m8")]),
-            ("######aye\n```m8\n", [(LineType.HEADING_6, "######aye", "aye"), (LineType.CODE, "```m8", "m8"), (None, "", "")]),
-            ("######aye\n```m8\n ", [(LineType.HEADING_6, "######aye", "aye"), (LineType.CODE, "```m8", "m8"), (None, " ", "")]),
-            (" \nsome text\n ", [(None, " ", ""), (None, "some text", ""), (None, " ", "")]),
-            ("1. one\n2.two\n3.  three", [(LineType.ORDERED_LIST, "1. one", "one"), (LineType.ORDERED_LIST, "2.two", "two"), (LineType.ORDERED_LIST, "3.  three", " three")]),
-        ]
-
-        for test in tests:
-            #print("Test 0: " + test[0])
-            #print("out: " + str(markdown_to_lines(test[0])))
-            self.assertListEqual(markdown_to_lines(test[0]), test[1])
-
     def test_markdown_to_code_blocks(self):
         tests = [
             ("```code\n```end", [ 
@@ -49,6 +32,32 @@ class TestTextNode(unittest.TestCase):
                 Block("code'''code_ception'''code", BlockType.CODE),
                 Block("end\nnewline", BlockType.UNDEFINED),
             ]),
+
+            ("start\n```code\n```\nend\n```more code\n```\nnewline", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code", BlockType.CODE),
+                Block("\nend", BlockType.UNDEFINED),
+                Block("more code", BlockType.CODE),
+                Block("\nnewline", BlockType.UNDEFINED),
+            ]),
+
+            ("start\n```code\n```\nend\n```more code\n```\n```even more ```code```\n```", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code", BlockType.CODE),
+                Block("\nend", BlockType.UNDEFINED),
+                Block("more code", BlockType.CODE),
+                Block("even more ```code```", BlockType.CODE),
+            ]),
+
+            ("start\n```code\n```\nsome more", [ 
+                Block("start", BlockType.UNDEFINED),
+                Block("code", BlockType.CODE),
+                Block("\nsome more", BlockType.UNDEFINED),
+            ]),
+
+            ("pass", [ 
+                Block("pass", BlockType.UNDEFINED),
+            ]),
         ]
 
         for test in tests:
@@ -67,9 +76,30 @@ class TestTextNode(unittest.TestCase):
                 Block("h2", BlockType.HEADING_2)
             ]),
 
+            ("\n## h2\n\nafter", [ 
+                Block("h2", BlockType.HEADING_2),
+                Block("\n\nafter", BlockType.UNDEFINED),
+            ]),
+
+            ("## h2\n\nafter", [ 
+                Block("h2", BlockType.HEADING_2),
+                Block("\n\nafter", BlockType.UNDEFINED),
+            ]),
+
             ("## h2\n### h3", [ 
                 Block("h2", BlockType.HEADING_2),
                 Block("h3", BlockType.HEADING_3)
+            ]),
+
+            ("\nbefore\n## h2\n### h3\n after", [ 
+                Block("\nbefore", BlockType.UNDEFINED),
+                Block("h2", BlockType.HEADING_2),
+                Block("h3", BlockType.HEADING_3),
+                Block("\n after", BlockType.UNDEFINED),
+            ]),
+
+            ("pass", [ 
+                Block("pass", BlockType.UNDEFINED),
             ]),
         ]
 
@@ -78,121 +108,282 @@ class TestTextNode(unittest.TestCase):
             self.assertListEqual(out, test[1])
 
 
-    def _test_markdown_to_blocks(self):
-        md = """
-This is **bolded** paragraph
 
-This is another paragraph with _italic_ text and `code` here
-This is the same paragraph on a new line
+    def test_handle_quotes(self):
+        tests = [
+            ("\n> quote", [ 
+                Block("quote", BlockType.QUOTE)
+            ]),
 
-- This is a list
-- with items
+            ("\n some random text \n> quote\n some random text", [ 
+                Block("\n some random text ", BlockType.UNDEFINED),
+                Block("quote", BlockType.QUOTE),
+                Block(" some random text", BlockType.UNDEFINED),
+            ]),
+
+            ("\n some random text \n> quote\n> next line in the same quote\n some random text", [ 
+                Block("\n some random text ", BlockType.UNDEFINED),
+                Block("quote next line in the same quote", BlockType.QUOTE),
+                Block(" some random text", BlockType.UNDEFINED),
+            ]),
+
+            ("\n some random text \n> q> uote\n> next line in the same quote\n some> random text", [ 
+                Block("\n some random text ", BlockType.UNDEFINED),
+                Block("q> uote next line in the same quote", BlockType.QUOTE),
+                Block(" some> random text", BlockType.UNDEFINED),
+            ]),
+
+            ("\n some random text \n> quote\n> next line in the same quote\n some random text\n> another quote", [ 
+                Block("\n some random text ", BlockType.UNDEFINED),
+                Block("quote next line in the same quote", BlockType.QUOTE),
+                Block(" some random text", BlockType.UNDEFINED),
+                Block("another quote", BlockType.QUOTE),
+            ]),
+
+            ("pass", [ 
+                Block("pass", BlockType.UNDEFINED),
+            ]),
+        ]
+
+        for test in tests:
+            out = handle_quotes([Block(test[0], BlockType.UNDEFINED)])
+            self.assertListEqual(out, test[1])
+
+
+    def test_handle_unordered_lists(self):
+        tests = [
+            ("- index", [ 
+                Block('', BlockType.UNORDERED_LIST, [Block('index', BlockType.LIST_INDEX)])
+            ]),
+
+            ("- index\n- index2", [ 
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)])
+            ]),
+
+            ("- -index\n- index2- ", [ 
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('-index', BlockType.LIST_INDEX),
+                    Block('index2-', BlockType.LIST_INDEX)])
+            ]),
+
+            ("- index\n- index2\n\n- index3", [ 
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)]),
+                Block('', BlockType.UNDEFINED),
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("- index\n- index2\nsome text\n- index3", [ 
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)]),
+                Block('some text', BlockType.UNDEFINED),
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("- index\n- index2\nsome\ntext\n- index3", [ 
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)]),
+                Block('some\ntext', BlockType.UNDEFINED),
+                Block('', BlockType.UNORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("pass", [ 
+                Block("pass", BlockType.UNDEFINED),
+            ]),
+        ]
+
+        for test in tests:
+            out = handle_unordered_lists([Block(test[0], BlockType.UNDEFINED)])
+            #print(f"-OUTPUT: {out}")
+            self.assertListEqual(out, test[1])
+
+
+
+    def test_handle_ordered_lists(self):
+        tests = [
+            ("1. index", [ 
+                Block('', BlockType.ORDERED_LIST, [Block('index', BlockType.LIST_INDEX)])
+            ]),
+
+            ("1. index\n2. index2", [ 
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)])
+            ]),
+
+            ("1. -index\n2. index2- ", [ 
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('-index', BlockType.LIST_INDEX),
+                    Block('index2-', BlockType.LIST_INDEX)])
+            ]),
+
+            ("1. index\n2. index2\n\n1. index3", [ 
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)]),
+                Block('', BlockType.UNDEFINED),
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("1. index\n2. index2\nsome text\n1. index3", [ 
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)]),
+                Block('some text', BlockType.UNDEFINED),
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("1. index\n2. index2\nsome\ntext\n1. index3", [ 
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX),
+                    Block('index2', BlockType.LIST_INDEX)]),
+                Block('some\ntext', BlockType.UNDEFINED),
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("1. index\n1. index2\nsome\ntext\n1. index3", [ 
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index', BlockType.LIST_INDEX)]),
+
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index2', BlockType.LIST_INDEX)]),
+
+                Block('some\ntext', BlockType.UNDEFINED),
+
+                Block('', BlockType.ORDERED_LIST, [
+                    Block('index3', BlockType.LIST_INDEX)]),
+            ]),
+
+            ("pass", [ 
+                Block("pass", BlockType.UNDEFINED),
+            ]),
+        ]
+
+        for test in tests:
+            #print(f"\n---TEST---:{test[0]}:---")
+            out = handle_ordered_lists([Block(test[0], BlockType.UNDEFINED)])
+            #print(f"\nOUTPUT: ;{out}; :END")
+            self.assertListEqual(out, test[1])
+
+
+
+    def test_markdown_to_blocks(self):
+        tests = [
+            (
 """
-        blocks = markdown_to_blocks(md)
-        self.assertEqual(
-            blocks,
-            [
-                "This is **bolded** paragraph",
-                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
-                "- This is a list\n- with items",
-            ],
-        )
+# head
+``` baller
+```
+among us
+""",[
+    Block('head', BlockType.HEADING_1),
+    Block(' baller', BlockType.CODE),
+    Block('\namong us\n', BlockType.PARAGRAPH),
+]),
+            (
+"""
+###### head
+``` baller
+```
+among us
+> Who
+> tucha
+> my
+> Spagett
 
-    def _test_block_to_block_type_extract(self):
-        tests = [
-            ("this is a paragraph", (BlockType.PARAGRAPH, "this is a paragraph")),
-            ("# this is a h1 header", (BlockType.HEADING_1, "this is a h1 header")),
-            ("## this is a h2 header", (BlockType.HEADING_2, "this is a h2 header")),
-            ("### this is a h3 header", (BlockType.HEADING_3, "this is a h3 header")),
-            ("#### this is a h4 header", (BlockType.HEADING_4, "this is a h4 header")),
-            ("##### this is a h5 header", (BlockType.HEADING_5, "this is a h5 header")),
-            ("###### this is a h6 header", (BlockType.HEADING_6, "this is a h6 header")),
-            ("```this is a code block```", (BlockType.CODE, "this is a code block")),
-            ("- this is a \n- unordered list", (BlockType.UNORDERED_LIST, "this is a \nunordered list")),
-            ("1. this is a \n2. ordered list", (BlockType.ORDERED_LIST, " this is a \n ordered list")),
+amonus
+
+# head2
+- unone
+- untwo
+
+1. 1
+2. 2
+1. uno
+""",[
+    Block('head', BlockType.HEADING_6),
+    Block(' baller', BlockType.CODE),
+    Block('\namong us', BlockType.PARAGRAPH),
+    Block('Who tucha my Spagett', BlockType.QUOTE),
+    Block('\namonus\n', BlockType.PARAGRAPH),
+    Block('head2', BlockType.HEADING_1),
+    Block('', BlockType.UNORDERED_LIST, [
+        Block('unone', BlockType.LIST_INDEX),
+        Block('untwo', BlockType.LIST_INDEX),
+    ]),
+    Block('', BlockType.PARAGRAPH),
+    Block('', BlockType.ORDERED_LIST, [
+        Block('1', BlockType.LIST_INDEX),
+        Block('2', BlockType.LIST_INDEX),
+    ]),
+    Block('', BlockType.ORDERED_LIST, [
+        Block('uno', BlockType.LIST_INDEX),
+    ]),
+]),
+            (
+"""
+among us
+> Who
+> tucha
+# head 1
+```
+> my
+> Spagett
+```
+more amonus
+""",[
+    Block('\namong us', BlockType.PARAGRAPH),
+    Block('Who tucha', BlockType.QUOTE),
+    Block('head 1', BlockType.HEADING_1),
+    Block('\n> my\n> Spagett', BlockType.CODE),
+    Block('\nmore amonus\n', BlockType.PARAGRAPH),
+])
         ]
 
         for test in tests:
-            self.assertEqual(block_to_block_type_extract(test[0]), test[1])
+            #print(f"\n---Test---")
+            out = markdown_to_bloks(test[0])
+            self.assertListEqual(out, test[1])
 
 
-    def _test_codeblock(self):
+
+    def test_blocks_to_html(self):
         tests = [
-            ("""
-```
-This is text that _should_ remain
-the **same** even with inline stuff
-```
-    """, "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>"),
-            ("""```This is text that _should_ remain
-the **same** even with inline stuff
-``` """, "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>"),
-            ("""
-```
-This is text that _should_ remain
-the **same** even with inline stuff
-```
-    """, "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>"),
+            ([
+                Block('among us', BlockType.PARAGRAPH)
+            ], ParentNode('div', [
+                LeafNode('p', 'among us'),
+            ])),
+
+            ([
+                Block('among us', BlockType.PARAGRAPH),
+                Block('code', BlockType.CODE),
+                Block('', BlockType.ORDERED_LIST, [Block('one', BlockType.LIST_INDEX)]),
+            ], ParentNode('div', [
+                LeafNode('p', 'among us'),
+                LeafNode('code', 'code'),
+                ParentNode('ol', [LeafNode('li', 'one')]),
+            ])),
+
+            ([
+            ], ParentNode('div', [
+            ])),
+
         ]
 
         for test in tests:
-            self.assertEqual(markdown_to_html_node(test[0]).to_html(), test[1])
-
-    def _test_paragraphs(self):
-        tests = [
-            ("""
-
-paragraph
-and its newline
-
-""", "<div><p>paragraph and its newline</p></div>"), # dear god this looks disgusting
-            ("""
-
-paragraph
-and its newline
-            
-and another paragraph
-
-""", "<div><p>paragraph and its newline</p><p>and another paragraph</p></div>"),
-            ("""paragraph
-and its newline
-            
-
-
-and another paragraph
-""", "<div><p>paragraph and its newline</p><p>and another paragraph</p></div>"),
-            ("""This is **bolded** paragraph
-text in a p
-tag here
-
-This is another paragraph with _italic_ text and `code` here
-""", "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>"),
-            ("""error?: This is **bolded** paragraph
-text in a __p__
-ta*g h*ere
-
-`This is another paragraph` with _italic_ text and `code` here
-""", "<div><p>error?: This is <b>bolded</b> paragraph text in a <b>p</b> ta<i>g h</i>ere</p><p><code>This is another paragraph</code> with <i>italic</i> text and <code>code</code> here</p></div>"),
-
-# ---------------------------
-        ]
-
-        for test in tests:
-            print(f"\n\n\nTESTING; {test[0]} ;TESTING")
-            self.assertEqual(markdown_to_html_node(test[0]).to_html(), test[1])
-
-
-
-    def _test_extract_title(self):
-        tests = [
-            ("# header", "header"),
-            ("## h2\n\n# header", "header"),
-            ("this is a paragraph i think\n\n# header\n\nhere is another", "header"),
-        ]
-
-        for test in tests:
-            self.assertEqual(extract_title(test[0]), test[1])
-
+            self.assertEqual(blocks_to_html_node(test[0]), test[1])
 
 
 if __name__ == "__main__":
