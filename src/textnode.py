@@ -48,7 +48,7 @@ class TextNode:
 def text_node_to_html_node(text_node):
     match text_node.text_type:
         case TextType.TEXT:
-            return LeafNode(None, text_node.text)
+            return LeafNode('', text_node.text)
 
         case TextType.BOLD:
             return LeafNode('b', text_node.text)
@@ -64,6 +64,10 @@ def text_node_to_html_node(text_node):
 
         case TextType.IMAGE:
             return LeafNode('img', None, props={'src': text_node.url, 'alt': text_node.text})
+        
+def text_nodes_to_html(text_nodes: List[TextNode]):
+    return ''.join(list(map(lambda x: text_node_to_html_node(x).to_html(), text_nodes)))
+
 
 
 

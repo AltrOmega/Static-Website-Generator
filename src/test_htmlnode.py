@@ -79,4 +79,9 @@ class TestHTMLNode(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if 'unittest.util' in __import__('sys').modules:
+        # Show full diff in self.assertEqual.
+        __import__('sys').modules['unittest.util']._MAX_LENGTH = 999999999
+
+    unittest.TestCase.maxDiff = None
+    unittest.main(verbosity=2)

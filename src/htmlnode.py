@@ -40,14 +40,15 @@ class LeafNode(HTMLNode):
     
     # Override
     def to_html(self):
-        print(f"LeafNode; \'{self.tag}\' | \"{self.value}\" ;LeafNode")
-        if self.value == None or self.value == '':
-            raise ValueError("LeafNode has to have a value.")
+        if self.value == None:# or self.value == '':
+            self.value=''
+            #raise ValueError("LeafNode has to have a value.")
         
         if self.tag == None or self.tag == '':
             return self.value
-
-        return f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
+        
+        out = f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
+        return out
     
     def __repr__(self):
         return f"LeafNode({self.tag}, {self.value})"
@@ -70,8 +71,8 @@ class ParentNode(HTMLNode):
 
         children_val = ""
         for child in self.children:
-            if (child.value == None or child.value == '') and (child.tag == None or child.tag == ''):
-                children_val += child.to_html()
+            #if (child.value == None or child.value == '') and (child.tag == None or child.tag == ''):
+            children_val += child.to_html()
         
         return f"<{self.tag}{self.props_to_html()}>{children_val}</{self.tag}>"
     

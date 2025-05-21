@@ -3,6 +3,22 @@ from textnode import TextNode, TextType
 from md_handle import *
 
 class TestTextNode(unittest.TestCase):
+    def test_clear_text(self):
+        tests = [
+            ('   some\ntext   ', 'some text'),
+            ('   some\ntext   and\n some more   ', 'some text   and  some more'),
+        ]
+        for test in tests:
+            self.assertEqual(clear_text(test[0]), test[1])
+
+    def test_clear_blocks(self):
+        tests = [
+            ([Block('   some\ntext   '), Block('   another\ntext   ')], [Block('some text'), Block('another text')]),
+            ([Block('   some\ntext   and\n some more   ')], [Block('some text   and  some more')]),
+        ]
+        for test in tests:
+            self.assertListEqual(clear_blocks(test[0]), test[1])
+
     def test_markdown_to_code_blocks(self):
         tests = [
             ("```code\n```end", [ 
@@ -289,7 +305,7 @@ among us
 """,[
     Block('head', BlockType.HEADING_1),
     Block(' baller', BlockType.CODE),
-    Block('\namong us\n', BlockType.PARAGRAPH),
+    Block('among us', BlockType.PARAGRAPH),
 ]),
             (
 """
@@ -314,9 +330,9 @@ amonus
 """,[
     Block('head', BlockType.HEADING_6),
     Block(' baller', BlockType.CODE),
-    Block('\namong us', BlockType.PARAGRAPH),
+    Block('among us', BlockType.PARAGRAPH),
     Block('Who tucha my Spagett', BlockType.QUOTE),
-    Block('\namonus\n', BlockType.PARAGRAPH),
+    Block('amonus', BlockType.PARAGRAPH),
     Block('head2', BlockType.HEADING_1),
     Block('', BlockType.UNORDERED_LIST, [
         Block('unone', BlockType.LIST_INDEX),
@@ -343,11 +359,11 @@ among us
 ```
 more amonus
 """,[
-    Block('\namong us', BlockType.PARAGRAPH),
+    Block('among us', BlockType.PARAGRAPH),
     Block('Who tucha', BlockType.QUOTE),
     Block('head 1', BlockType.HEADING_1),
     Block('\n> my\n> Spagett', BlockType.CODE),
-    Block('\nmore amonus\n', BlockType.PARAGRAPH),
+    Block('more amonus', BlockType.PARAGRAPH),
 ])
         ]
 
@@ -358,7 +374,7 @@ more amonus
 
 
 
-    def test_blocks_to_html(self):
+    def test_blocks_to_html_node(self):
         tests = [
             ([
                 Block('among us', BlockType.PARAGRAPH)
@@ -385,6 +401,66 @@ more amonus
         for test in tests:
             self.assertEqual(blocks_to_html_node(test[0]), test[1])
 
+    def test_markdown_to_html_node(self):
+        tests = [
+    (
+"""
+among us
+""",[
+        LeafNode('p', 'among us')
+    ]), (
+
+"""
+# head
+``` baller
+```
+among us
+""", [
+    LeafNode('h1', 'head'),
+    LeafNode('code', ' baller'),
+    LeafNode('p', 'among us'),
+    ]), (
+"""
+among us
+> Who
+> tucha
+# head 1
+```
+> my
+> Spagett
+```
+more amonus
+""",[
+    LeafNode('p', 'among us'),
+    LeafNode('blockquote', 'Who tucha'),
+    LeafNode('h1', 'head 1'),
+    LeafNode('code', '\n> my\n> Spagett'),
+    LeafNode('p', 'more amonus'),
+]), (
+
+"""
+# head
+1. one
+2. two
+among us
+""", [
+    LeafNode('h1', 'head'),
+    LeafNode('p', ''),
+    ParentNode('ol', [
+        LeafNode('li', 'one'),
+        LeafNode('li', 'two'),
+    ]),
+    LeafNode('p', 'among us'),
+    ]),
+        ]
+
+        for test in tests:
+            self.assertEqual(markdown_to_html_node(test[0]), ParentNode('div', children=test[1]))
 
 if __name__ == "__main__":
-    unittest.main()
+    if 'unittest.util' in __import__('sys').modules:
+        # Show full diff in self.assertEqual.
+        __import__('sys').modules['unittest.util']._MAX_LENGTH = 999999999
+
+    unittest.TestCase.maxDiff = None
+    unittest.main(verbosity=2)

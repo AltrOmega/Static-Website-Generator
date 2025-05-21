@@ -46,7 +46,7 @@ class TestTextNode(unittest.TestCase):
 
     def test_basic_textnode(self):
         tests = [
-            (TextNode("This is a text node", TextType.TEXT), None, "This is a text node"),
+            (TextNode("This is a text node", TextType.TEXT), '', "This is a text node"),
             (TextNode("This is a bold node", TextType.BOLD), 'b', "This is a bold node"),
             (TextNode("This is a italic node", TextType.ITALIC), 'i', "This is a italic node"),
             (TextNode("This is a code node", TextType.CODE), "code", "This is a code node"),
@@ -78,6 +78,7 @@ class TestTextNode(unittest.TestCase):
     def test_extract_pattern(self):
         tests = [
             (extract_pattern("padding **ballder** __sus__more padding", TextType.BOLD), (("ballder",), 8, 19)),
+            (extract_pattern("padding *ballder* _sus_more padding", TextType.ITALIC), (("ballder",), 8, 17)),
             (extract_pattern("`code`", TextType.CODE), (("code",), 0, 6)),
             (extract_pattern("__bald__", TextType.BOLD), (("bald",), 0, 8)),
             (extract_pattern("[link name](gugiel)", TextType.LINK), (("link name", "gugiel"), 0, 19)),
@@ -168,4 +169,9 @@ class TestTextNode(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if 'unittest.util' in __import__('sys').modules:
+        # Show full diff in self.assertEqual.
+        __import__('sys').modules['unittest.util']._MAX_LENGTH = 999999999
+
+    unittest.TestCase.maxDiff = None
+    unittest.main(verbosity=2)

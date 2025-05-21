@@ -38,6 +38,21 @@ class Block:
 
 
 
+def clear_text(text: str):
+    return ' '.join(text.split('\n')).strip()
+
+def clear_blocks(blocks: List[Block]):
+    out = []
+    for block in blocks:
+        if block.type == BlockType.CODE:
+            out.append(block)
+            continue
+        children = block.inner_blocks
+        if children != []:
+            children = clear_blocks(children)
+        out.append(Block(clear_text(block.text), block.type, children))
+    return out
+
 def markdown_to_code_blocks(markdown: str) -> List[Block]:
     regex_str = (r"(?:\n|^)```([\s\S]*?)\n```")
     regex = re.compile(regex_str, flags=re.MULTILINE | re.DOTALL)
@@ -191,12 +206,6 @@ def handle_unordered_lists(blocks: List[Block]):
         temp = '\n'.join(undefineds)
         if undefineds != [] and temp.strip() != '':
             out.append(Block(temp, BlockType.UNDEFINED))
-    '''
-    if line is not None and line.strip() != '':
-        out.append(Block(line, BlockType.UNDEFINED))
-    elif line is None and block.type == BlockType.UNDEFINED:
-        out.append(block)
-    '''
 
     if out == []:
         return blocks
@@ -269,12 +278,17 @@ def markdown_to_bloks(markdown: str) -> List[Block]:
     blocks = handle_unordered_lists(blocks)
     blocks = handle_ordered_lists(blocks)
     blocks = undefined_to_paragraphs(blocks)
-    return blocks
+    return clear_blocks(blocks)
 
 
 def block_to_html_node(block: Block):
+    if block.type == BlockType.CODE:
+            ret = LeafNode('pre', LeafNode('code', block.text).to_html())
+            return ret
+
+
     if block.type not in [BlockType.UNORDERED_LIST, BlockType.ORDERED_LIST]:
-        return LeafNode(block.type.value, block.text)
+        return LeafNode(block.type.value, text_nodes_to_html(text_to_textnodes(block.text)))
     else:
         return ParentNode(block.type.value, list(map(lambda x: block_to_html_node(x), block.inner_blocks)))
 
@@ -286,16 +300,16 @@ def blocks_to_html_node(blocks: List[Block]):
 
 
 
-# Todo: start here, write unit tests for this function
 def markdown_to_html_node(markdown: str):
     blocks = markdown_to_bloks(markdown)
     return blocks_to_html_node(blocks)
 
 
-def extract_title(markdown):
-    blocks = markdown_to_blocks(markdown)
-    for block in blocks:
-        type, content = block_to_block_type_extract(block)
-        if type == BlockType.HEADING_1:
-            return content
-    raise ValueError("Given markdown has no h1 header to extract the title from.")
+
+def extract_title_from_blocks(blocks: List[Block]):
+    filtered = list(filter(lambda x: x.type == BlockType.HEADING_1, blocks))
+    
+    if len(filtered) <= 0:
+        raise ValueError("Given markdown has no h1 header to extract the title from.")
+
+    return filtered[0].text

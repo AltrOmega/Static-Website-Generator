@@ -47,10 +47,16 @@ def create_and_write_file(filename, text):
 
 def generate_page(from_path, template_path, dest_path):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+
     markdown = read_file_as_string(from_path)
     template = read_file_as_string(template_path)
-    content = markdown_to_html_node(markdown).to_html()
-    title = extract_title(markdown)
+
+    blocks = markdown_to_bloks(markdown)
+    
+    content = blocks_to_html_node(blocks).to_html()
+    title = extract_title_from_blocks(blocks)
+
+
     template = template.replace("{{ Title }}", title)
     template = template.replace("{{ Content }}", content)
     # Todo: make the filename be generated automaticaly based on template file name
