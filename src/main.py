@@ -61,14 +61,12 @@ def generate_page(from_path, template_path, dest_path, basepath):
     template = template.replace("{{ Title }}", title)
     template = template.replace("{{ Content }}", content)
 
-    template.replace('html="', f'html="{basepath}')
-    template.replace('src="', f'src="{basepath}')
+    template = template.replace('href="/', f'href="{basepath}')
+    template = template.replace('src="/', f'src="{basepath}')
 
-    # Todo: make the filename be generated automaticaly based on template file name
     create_and_write_file(f"{dest_path}", template)
     
 
-# Todo: start here
 def generate_pages_recursive(content_source_path, template_path, dest_dir_path, basepath):
     if not os.path.exists(content_source_path):
         raise ValueError("Source path does not exist.")
@@ -107,6 +105,8 @@ def main():
     basepath ='/'
     if len(sys.argv) > 1:
         basepath = sys.argv[1]
+
+    print(f'Deploying on: "{basepath}"')
 
     output = 'docs' 
     if os.path.exists(output):
