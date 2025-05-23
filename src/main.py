@@ -104,11 +104,11 @@ def main():
     TEMPLATE = 'template.html'
     CONTENT = 'content'
 
-    basepath='/'
+    basepath ='/'
     if len(sys.argv) > 1:
         basepath = sys.argv[1]
 
-    output = 'public'
+    output = 'docs' 
     if os.path.exists(output):
         shutil.rmtree(output)
     os.mkdir(output)
