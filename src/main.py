@@ -2,6 +2,7 @@ import os
 import shutil
 from textnode import TextNode, TextType
 from md_handle import *
+import sys
 
 
 def full_copy(source, destination):
@@ -45,7 +46,7 @@ def create_and_write_file(filename, text):
 
 
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
 
     markdown = read_file_as_string(from_path)
@@ -59,12 +60,16 @@ def generate_page(from_path, template_path, dest_path):
 
     template = template.replace("{{ Title }}", title)
     template = template.replace("{{ Content }}", content)
+
+    template.replace('html="', f'html="{basepath}')
+    template.replace('src="', f'src="{basepath}')
+
     # Todo: make the filename be generated automaticaly based on template file name
     create_and_write_file(f"{dest_path}", template)
     
 
 # Todo: start here
-def generate_pages_recursive(content_source_path, template_path, dest_dir_path):
+def generate_pages_recursive(content_source_path, template_path, dest_dir_path, basepath):
     if not os.path.exists(content_source_path):
         raise ValueError("Source path does not exist.")
 
@@ -85,20 +90,30 @@ def generate_pages_recursive(content_source_path, template_path, dest_dir_path):
         name, ext = os.path.splitext(full_source)
         if os.path.isfile(full_source) and ext == '.md':
             file_destination = f"{dest_dir_path}/index.html"
-            generate_page(full_source, template_path, file_destination)
+            generate_page(full_source, template_path, file_destination, basepath)
             #shutil.copy(full_source, full_destination)
             continue
         
         os.mkdir(full_destination)
         #full_copy(full_source, full_destination)
-        generate_pages_recursive(full_source, template_path, full_destination)
+        generate_pages_recursive(full_source, template_path, full_destination, basepath)
 
 
 def main():
-    shutil.rmtree('public')
-    os.mkdir('public')
-    full_copy('static', 'public')
-    generate_pages_recursive('content', 'template.html', 'public')
+    STATIC = 'static'
+    TEMPLATE = 'template.html'
+    CONTENT = 'content'
+
+    basepath='/'
+    if len(sys.argv) > 1:
+        basepath = sys.argv[1]
+
+    output = 'public'
+    if os.path.exists(output):
+        shutil.rmtree(output)
+    os.mkdir(output)
+    full_copy(STATIC, output)
+    generate_pages_recursive(CONTENT, TEMPLATE, output, basepath)
 
 
 if __name__ == '__main__':
