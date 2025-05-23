@@ -60,26 +60,45 @@ def generate_page(from_path, template_path, dest_path):
     template = template.replace("{{ Title }}", title)
     template = template.replace("{{ Content }}", content)
     # Todo: make the filename be generated automaticaly based on template file name
-    create_and_write_file(f"{dest_path}/index.html", template)
+    create_and_write_file(f"{dest_path}", template)
     
 
+# Todo: start here
+def generate_pages_recursive(content_source_path, template_path, dest_dir_path):
+    if not os.path.exists(content_source_path):
+        raise ValueError("Source path does not exist.")
+
+    if not os.path.exists(dest_dir_path):
+        raise ValueError("Destination path does not exist.")
+    
+    if os.path.isfile(content_source_path):
+        raise ValueError("Source path must be a folder.")
+    
+    if os.path.isfile(dest_dir_path):
+        raise ValueError("Destination path must be a folder.")
+    
+    path_list = os.listdir(content_source_path)
+    for path in path_list:
+        full_source = f"{content_source_path}/{path}"
+        full_destination = f"{dest_dir_path}/{path}"
+
+        name, ext = os.path.splitext(full_source)
+        if os.path.isfile(full_source) and ext == '.md':
+            file_destination = f"{dest_dir_path}/index.html"
+            generate_page(full_source, template_path, file_destination)
+            #shutil.copy(full_source, full_destination)
+            continue
+        
+        os.mkdir(full_destination)
+        #full_copy(full_source, full_destination)
+        generate_pages_recursive(full_source, template_path, full_destination)
 
 
-
-DEFAULT_SOURCE = 'static'
-DEFAULT_DESTINATION = 'public'
-DEFAULT_TEMPLATE = 'template.html'
-DEFAULT_MARKDOWN = 'content/index.md'
 def main():
-    source = DEFAULT_SOURCE
-    destination = DEFAULT_DESTINATION
-    template = DEFAULT_TEMPLATE
-
-    shutil.rmtree(destination)
-    os.mkdir(destination)
-
-    full_copy(source, destination)
-    generate_page(DEFAULT_MARKDOWN, template, destination)
+    shutil.rmtree('public')
+    os.mkdir('public')
+    full_copy('static', 'public')
+    generate_pages_recursive('content', 'template.html', 'public')
 
 
 if __name__ == '__main__':
